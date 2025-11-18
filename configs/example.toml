@@ -1,0 +1,24 @@
+[simulation]
+rounds = 100
+num_clients = 50
+clients_per_round = 10
+seed = 1234
+
+[training_time]
+kind = "lognormal"
+mean = 0.0      # mu in log-space
+sigma = 0.5     # sigma in log-space
+
+[communication_time]
+kind = "lognormal"
+mean = -1.0
+sigma = 0.5
+
+[output]
+directory = "output"
+write_traces_csv = true
+write_summary_json = true
+write_histograms_json = true
+per_client_histograms = true
+histogram_bins = 20
+
