@@ -65,7 +65,7 @@ Average training time for each client with dummy model training times:
 ![Average training + communication time per client (molti client)](media/plot_avg_time_per_client.png)
 
 Average training time for each client without training model (prediction with ML model):
-![Average training + communication time per client (pochi client)](media/plot_avg_time_per_client.png)
+![Average training + communication time per client (pochi client)](media/plot_avg_time_per_client1.png)
 
 Le barre sono ordinate per **tempo totale medio** crescente; puoi usare queste viste con:
 
