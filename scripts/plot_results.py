@@ -4,6 +4,7 @@ import csv
 from pathlib import Path
 from typing import Dict, List
 
+import argparse
 import json
 import matplotlib
 
@@ -53,9 +54,22 @@ def plot_global_histograms(rows, out_dir: Path) -> Path:
 
 def plot_avg_per_client(summary: Dict, out_dir: Path) -> Path:
     per_client = summary.get("per_client", {})
-    client_ids: List[str] = sorted(per_client.keys(), key=lambda x: int(x))
-    train_means = [per_client[c]["train_mean"] for c in client_ids]
-    comm_means = [per_client[c]["comm_mean"] for c in client_ids]
+    if not per_client:
+        raise ValueError("summary.json has no 'per_client' section")
+
+    # Build list of (client_id, train_mean, comm_mean) and sort by total mean ascending.
+    entries = []
+    for cid, stats in per_client.items():
+        t_mean = float(stats.get("train_mean", 0.0))
+        c_mean = float(stats.get("comm_mean", 0.0))
+        total = t_mean + c_mean
+        entries.append((cid, t_mean, c_mean, total))
+
+    entries.sort(key=lambda x: x[3])  # sort by total mean time
+
+    client_ids = [cid for cid, _, _, _ in entries]
+    train_means = [t for _, t, _, _ in entries]
+    comm_means = [c for _, _, c, _ in entries]
 
     x = range(len(client_ids))
 
@@ -68,9 +82,9 @@ def plot_avg_per_client(summary: Dict, out_dir: Path) -> Path:
         label="communication",
         color="C3",
     )
-    ax.set_xlabel("client id")
+    ax.set_xlabel("client (sorted by total mean time)")
     ax.set_ylabel("mean time per round")
-    ax.set_title("Average training + communication time per client")
+    ax.set_title("Average training + communication time per client (sorted)")
     ax.set_xticks(x)
     ax.set_xticklabels(client_ids, rotation=90, fontsize=6)
     ax.legend()
@@ -81,8 +95,43 @@ def plot_avg_per_client(summary: Dict, out_dir: Path) -> Path:
     return out_path
 
 
+def plot_model_metrics(summary: Dict, out_dir: Path) -> Path | None:
+    metrics = summary.get("model_metrics")
+    if not metrics:
+        return None
+
+    rounds = [m["round"] for m in metrics]
+    acc = [m.get("accuracy", 0.0) for m in metrics]
+    f1 = [m.get("macro_f1", 0.0) for m in metrics]
+
+    fig, ax = plt.subplots(figsize=(6, 4))
+    ax.plot(rounds, acc, label="accuracy", marker="o")
+    ax.plot(rounds, f1, label="macro F1", marker="x")
+    ax.set_xlabel("round")
+    ax.set_ylabel("metric")
+    ax.set_title("Model accuracy and macro-F1 over rounds")
+    ax.grid(True, alpha=0.3)
+    ax.legend()
+    fig.tight_layout()
+    out_path = out_dir / "plot_model_metrics.png"
+    fig.savefig(out_path)
+    plt.close(fig)
+    return out_path
+
+
 def main() -> None:
-    out_dir = Path("output")
+    parser = argparse.ArgumentParser(
+        description="Plot histograms and metrics from simulation outputs.",
+    )
+    parser.add_argument(
+        "--dir",
+        type=str,
+        default="output",
+        help="Directory containing client_times.csv and summary.json (default: output).",
+    )
+    args = parser.parse_args()
+
+    out_dir = Path(args.dir)
     csv_path = out_dir / "client_times.csv"
     summary_path = out_dir / "summary.json"
 
@@ -96,13 +145,14 @@ def main() -> None:
 
     hist_path = plot_global_histograms(rows, out_dir)
     avg_path = plot_avg_per_client(summary, out_dir)
+    metrics_path = plot_model_metrics(summary, out_dir)
 
     print("Generated plots:")
     print(f" - {hist_path}")
     print(f" - {avg_path}")
+    if metrics_path:
+        print(f" - {metrics_path}")
 
 
 if __name__ == "__main__":
     main()
-
-
