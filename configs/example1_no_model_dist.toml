@@ -1,0 +1,41 @@
+[simulation]
+rounds = 100
+num_clients = 50
+clients_per_round = 10
+seed = 1234
+
+[training_time]
+kind = "lognormal"
+mean = 0.0
+sigma = 0.5
+
+[communication_time]
+kind = "lognormal"
+mean = -1.0
+sigma = 0.5
+default_bandwidth_mean_mbps = 20.0   # banda media di default (Mbps)
+default_bandwidth_jitter = 0.3       # jitter di default
+
+[output]
+directory = "output_no_model_dist"
+write_traces_csv = true
+write_summary_json = true
+write_histograms_json = true
+per_client_histograms = true
+histogram_bins = 20
+
+[model]
+enabled = false          # NON addestrare alcun modello reale
+kind = "dummy_logreg"    # i campi sotto servono solo al modello ML dei tempi
+input_dim = 10
+num_classes = 3
+samples_per_client = 200
+test_samples = 500
+local_epochs = 1
+batch_size = 128
+learning_rate = 0.1
+eval_every_rounds = 5
+flops_per_sample = 1000000.0
+model_size_bytes = 5000000
+
+

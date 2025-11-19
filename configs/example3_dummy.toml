@@ -1,0 +1,40 @@
+[simulation]
+rounds = 100
+num_clients = 10
+clients_per_round = 5
+seed = 1234
+
+[training_time]
+kind = "ml"        # modello ML per i tempi di training
+mean = 0.0
+sigma = 0.3
+
+[communication_time]
+kind = "bandwidth" # modello di comunicazione basato sulla banda
+mean = 0.0
+sigma = 0.3
+default_bandwidth_mean_mbps = 1000.0   # banda media di default (Mbps)
+default_bandwidth_jitter = 0.3       # jitter di default
+
+[output]
+directory = "output_dummy_ml"
+write_traces_csv = true
+write_summary_json = true
+write_histograms_json = true
+per_client_histograms = true
+histogram_bins = 20
+
+[model]
+enabled = true                  # train dummy model
+measure_training_time = true    # save training time
+kind = "dummy_logreg"
+input_dim = 100
+num_classes = 30
+samples_per_client = 200
+test_samples = 500
+local_epochs = 100
+batch_size = 128
+learning_rate = 0.1
+eval_every_rounds = 5
+flops_per_sample = 1000000.0
+model_size_bytes = 50000
