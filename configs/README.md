@@ -1,99 +1,99 @@
-# Configurazioni del simulatore (TOML)
+# Simulator configs (TOML)
 
-Questa cartella contiene i file TOML che configurano le simulazioni del simulatore DES di Federated Learning.
+This folder contains the TOML files that configure simulations for the Federated Learning DES simulator.
 
-Ogni file TOML è composto da sezioni principali:
+Each config is made of the following main sections:
 
-- `[simulation]` – parametri globali della simulazione.
-- `[training_time]` – modello di tempo per il **training**.
-- `[communication_time]` – modello di tempo per la **comunicazione**.
-- `[output]` – dove scrivere i risultati.
-- `[model]` – (opzionale) dummy model da addestrare e opzioni di misurazione del tempo.
-- `[devices."<id>"]` – (opzionale) override per hardware/banda/batch size di singoli client.
+- `[simulation]` – global simulation parameters.
+- `[training_time]` – time model for **training**.
+- `[communication_time]` – time model for **communication**.
+- `[output]` – where results are written.
+- `[model]` – (optional) dummy FL model and time‑measurement options.
+- `[devices."<id>"]` – (optional) per‑device overrides for hardware/bandwidth/batch size.
 
-Di seguito una spiegazione esaustiva di ciascuna sezione.
+Below is a detailed description of each section.
 
 ---
 
-## 1. Sezione `[simulation]`
+## 1. `[simulation]` section
 
-Esempio:
+Example:
 
 ```toml
 [simulation]
-rounds = 100          # numero di round federati
-num_clients = 50      # numero totale di client disponibili
-clients_per_round = 10  # quanti client selezionare per round
-seed = 1234           # seed RNG globale
+rounds = 100          # number of federated rounds
+num_clients = 50      # total number of clients
+clients_per_round = 10  # how many clients per round
+seed = 1234           # RNG seed
 ```
 
-Campi:
+Fields:
 
-- `rounds` (int): numero di round federati.
-- `num_clients` (int): numero di client totali (ID da `0` a `num_clients-1`).
-- `clients_per_round` (int, opzionale): numero di client da selezionare ogni round.
-  - Se assente, viene usato `participation_rate` (non mostrato qui, default 1.0).
-- `participation_rate` (float, opzionale): frazione di client selezionati a ogni round (default 1.0).
-- `seed` (int): seed iniziale per la simulazione.
+- `rounds` (int): number of federated rounds.
+- `num_clients` (int): total number of clients (IDs from `0` to `num_clients-1`).
+- `clients_per_round` (int, optional): number of clients per round.
+  - If omitted, `participation_rate` is used instead (default 1.0).
+- `participation_rate` (float, optional): fraction of clients selected each round.
+- `seed` (int): global RNG seed.
 
 ---
 
-## 2. Sezione `[training_time]`
+## 2. `[training_time]` section
 
-Controlla come vengono generati i **tempi di training** per ciascun client.
+Controls how **training times** are generated for each client.
 
-Campo principale:
+Main field:
 
-- `kind` (string): tipo di modello di tempo. Valori supportati:
-  - `"lognormal"` / `"normal"` / `"exponential"` / `"constant"` – modelli parametrici semplici.
-  - `"trace"` – legge tempi da un file CSV di tracce.
-  - `"hardware"` – modello analitico basato su hardware + meta del modello.
-  - `"ml"` – usa il modello ML addestrato in `data/ml_time_model.npz`.
+- `kind` (string): time model type. Supported values:
+  - `"lognormal"` / `"normal"` / `"exponential"` / `"constant"` – simple parametric models.
+  - `"trace"` – replay times from a CSV trace file.
+  - `"hardware"` – analytic model based on hardware + model metadata.
+  - `"ml"` – ML time model trained from `data/ml_time_model.npz`.
 
-Esempi:
+Examples:
 
 ```toml
-# Esempio 1: lognormale puro
+# Example 1: pure lognormal
 [training_time]
 kind = "lognormal"
 mean = 0.0
 sigma = 0.5
 
-# Esempio 2: modello ML
+# Example 2: ML time model
 [training_time]
 kind = "ml"
-mean = 0.0      # rumore lognormale aggiuntivo (mu log-space)
+mean = 0.0      # extra lognormal noise (mu in log-space)
 sigma = 0.3
 ```
 
-Campi comuni:
+Common fields:
 
-- `mean`, `sigma` (float): parametri base del rumore lognormale/gaussiano.
-- `constant` (float): per `kind = "constant"`, tempo fisso.
-- `file` / `column` (string): per `kind = "trace"`, CSV da cui leggere i tempi.
+- `mean`, `sigma` (float): base parameters for lognormal/normal noise.
+- `constant` (float): for `kind = "constant"`, fixed time.
+- `file` / `column` (string): for `kind = "trace"`, CSV path/column.
 
-Note per `kind = "ml"`:
+Notes for `kind = "ml"`:
 
-- richiede che esista `data/ml_time_model.npz` (generato da `scripts/train_ml_time_model.py`).
-- usa come feature:
+- requires `data/ml_time_model.npz` (from `scripts/train_ml_time_model.py`).
+- uses as features:
   - hardware: `cpu_cores`, `cpu_freq_ghz`, `mem_available_gb`, `accelerator_tflops`,
-  - modello: `flops_per_sample`, `model_size_bytes`, `samples_per_client`,
+  - model: `flops_per_sample`, `model_size_bytes`, `samples_per_client`,
   - training: `batch_size`, `local_epochs`.
-- queste informazioni derivano da `[model]` e, per alcune, da `[devices."<id>"]`.
+- these values are taken from `[model]` and, partly, from `[devices."<id>"]`.
 
 ---
 
-## 3. Sezione `[communication_time]`
+## 3. `[communication_time]` section
 
-Controlla i **tempi di comunicazione** (invio dei gradienti/modello).
+Controls **communication times** (upload of gradients/model).
 
-Campo principale:
+Main field:
 
-- `kind` (string): modello di tempo. I casi più utili qui sono:
-  - `"bandwidth"` – tempo ≈ dimensione_gradiente / banda (stocastica).
-  - `"lognormal"`, `"normal"`, `"constant"`, ecc. – se vuoi un modello puramente parametrico.
+- `kind` (string): time model. Most useful cases:
+  - `"bandwidth"` – time ≈ gradient_size / bandwidth (stochastic).
+  - `"lognormal"`, `"normal"`, `"constant"`, etc. – purely parametric models.
 
-Esempio tipico:
+Typical example:
 
 ```toml
 [communication_time]
@@ -104,22 +104,22 @@ default_bandwidth_mean_mbps = 20.0   # banda media di default per tutti i device
 default_bandwidth_jitter = 0.3       # jitter lognormale di default
 ```
 
-Per `kind = "bandwidth"`:
+For `kind = "bandwidth"`:
 
-- per ogni client:
-  - `payload_bytes ≈ model_size_bytes` (da `[model]`);
+- for each client:
+  - `payload_bytes ≈ model_size_bytes` (from `[model]`);
   - `bandwidth ~ LogNormal(mu, sigma)` in Mbps;
   - `time ≈ payload_bytes / bandwidth_bps`.
-- La banda si determina così:
-  1. Se esiste `[devices."<id>"].bandwidth_mean_mbps` / `bandwidth_jitter`, usa quelli.
-  2. Altrimenti, se definiti, usa `default_bandwidth_mean_mbps` / `default_bandwidth_jitter`.
-  3. In mancanza di tutto, default interni: 10 Mbps, jitter 0.4.
+- Bandwidth is determined as:
+  1. If `[devices."<id>"].bandwidth_mean_mbps` / `bandwidth_jitter` exist, use them.
+  2. Otherwise use `default_bandwidth_mean_mbps` / `default_bandwidth_jitter` when present.
+  3. If nothing is specified, internal defaults are used: 10 Mbps, jitter 0.4.
 
 ---
 
-## 4. Sezione `[output]`
+## 4. `[output]` section
 
-Specifica dove scrivere i risultati.
+Specifies where results are written.
 
 ```toml
 [output]
@@ -131,27 +131,27 @@ per_client_histograms = true
 histogram_bins = 20
 ```
 
-Campi:
+Fields:
 
-- `directory` (string): cartella di output.
-- `write_traces_csv` (bool): se `true`, scrive `client_times.csv`.
-- `write_summary_json` (bool): se `true`, scrive `summary.json` (statistiche per client).
-- `write_histograms_json` (bool): se `true`, scrive `histograms.json`.
-- `per_client_histograms` (bool): abilita istogrammi per client.
-- `histogram_bins` (int): numero di bin per istogrammi.
+- `directory` (string): output folder.
+- `write_traces_csv` (bool): if `true`, writes `client_times.csv`.
+- `write_summary_json` (bool): if `true`, writes `summary.json`.
+- `write_histograms_json` (bool): if `true`, writes `histograms.json`.
+- `per_client_histograms` (bool): enable per‑client histograms.
+- `histogram_bins` (int): number of bins.
 
 ---
 
-## 5. Sezione `[model]` (dummy FL model)
+## 5. `[model]` section (dummy FL model)
 
-Controlla se e come viene addestrato un **dummy model** (logreg-like) durante la simulazione.
+Controls whether and how a **dummy model** (logreg‑like) is trained during simulation.
 
-Esempio:
+Example:
 
 ```toml
 [model]
-enabled = true              # se false: nessun dummy training
-measure_training_time = false  # se true: usa il wall-clock del dummy training come training_time
+enabled = true              # if false: no dummy training
+measure_training_time = false  # if true: use wall-clock training time as training_time
 kind = "dummy_logreg"
 
 input_dim = 10
@@ -166,33 +166,33 @@ flops_per_sample = 1000000.0
 model_size_bytes = 5000000
 ```
 
-Campi chiave:
+Key fields:
 
 - `enabled` (bool):
-  - `true`  → il dummy model viene istanziato e addestrato; si ottengono metriche (accuracy, macro-F1).
-  - `false` → **nessun** modello viene addestrato (anche se le info sotto vengono comunque usate dal time model ML).
+  - `true`  → dummy model is instantiated and trained; accuracy/macro‑F1 are reported.
+  - `false` → **no** model is trained (values below are still used by time models).
 - `measure_training_time` (bool):
-  - `false` (default): i tempi di training vengono dal modello di tempo (`[training_time]`).
-    - il dummy training, se `enabled = true`, serve solo per le metriche.
-  - `true`: il simulatore misura il **wall-clock** di `local_train()` per ciascun client e usa quel valore come `training_time` (sovrascrivendo il modello di tempo).
+  - `false` (default): training times come from the time model (`[training_time]`).
+    - dummy training (if `enabled`) is used only for metrics.
+  - `true`: simulator measures the **wall‑clock** time of `local_train()` per client and uses it as `training_time` (overriding the time model).
 - `flops_per_sample`, `model_size_bytes`, `samples_per_client`, `batch_size`, `local_epochs`:
-  - descrivono “quanto è pesante” il modello e il training;
-  - sono usati:
-    - dal modello ML (`kind = "ml"`) per il tempo di training,
-    - dal modello analitico `kind = "hardware"`,
-    - per determinare la dimensione dei gradienti (payload) nel modello di comunicazione.
+  - describe how “heavy” the model and training are;
+  - used by:
+    - the ML time model (`kind = "ml"`),
+    - the analytic model (`kind = "hardware"`),
+    - communication model (gradient payload size).
 
-Se la sezione `[model]` manca del tutto:
+If `[model]` is missing:
 
-- `cfg.model = None` e nessun dummy model viene creato.
+- `cfg.model = None` and no dummy model is built.
 
 ---
 
-## 6. Sezioni `[devices."<id>"]` (per-device)
+## 6. `[devices."<id>"]` sections (per‑device)
 
-Permette di specializzare hardware, GPU, banda e batch size per singoli client.
+Customize hardware, GPU, bandwidth and batch size for individual clients.
 
-Esempio:
+Example:
 
 ```toml
 [devices."0"]
@@ -204,7 +204,7 @@ accelerator_tflops = 0.0
 has_gpu = false
 bandwidth_mean_mbps = 5.0
 bandwidth_jitter = 0.5
-batch_size = 64         # batch locale usata nelle feature del modello ML
+batch_size = 64         # local batch size used in ML time model features
 
 [devices."1"]
 cpu_cores = 16
@@ -215,49 +215,48 @@ bandwidth_jitter = 0.2
 batch_size = 256
 ```
 
-Campi:
+Fields:
 
 - `cpu_cores`, `cpu_freq_ghz`, `mem_total_gb`, `mem_available_gb`:
-  - override dell’hardware rispetto all’host.
+  - override host hardware.
 - `accelerator_tflops`:
-  - TFLOPs della GPU/acceleratore per quel device.
+  - GPU/accelerator TFLOPs for this device.
 - `has_gpu`:
-  - `true` / `false`: forza presenza o assenza di GPU.
-  - se non specificato, viene inferito da `accelerator_tflops > 0` o, in ultima istanza, dall’host.
+  - `true` / `false`: explicitly mark device as having a GPU.
+  - if omitted, inferred from `accelerator_tflops > 0` or host.
 - `bandwidth_mean_mbps`, `bandwidth_jitter`:
-  - banda media e jitter lognormale per il modello `"bandwidth"`.
+  - mean bandwidth and lognormal jitter for `"bandwidth"` model.
 - `batch_size`:
-  - batch size specifica per quel device;
-  - usata nel vettore di feature del modello ML dei tempi (`log_batch_size`).
+  - per‑device batch size;
+  - used in the ML time model features (`log_batch_size`).
 
-I client _non_ elencati in `[devices."<id>"]` usano:
+Clients **not** listed in `[devices."<id>"]` use:
 
-- l’hardware dell’host (`collect_host_hardware()`),
-- la banda di default (`default_bandwidth_mean_mbps` / `default_bandwidth_jitter` in `[communication_time]`),
-- la `batch_size` globale definita in `[model]`.
+- host hardware (`collect_host_hardware()`),
+- default bandwidth (`default_bandwidth_mean_mbps` / `default_bandwidth_jitter` in `[communication_time]`),
+- global `batch_size` from `[model]`.
 
 ---
 
-## 7. Esempi di config pronti
+## 7. Ready‑made configs
 
-Questa cartella contiene alcuni esempi già pronti:
+This folder contains ready‑to‑use examples:
 
 - `example1_no_model_dist.toml`  
-  Nessun modello, tempi da distribuzioni (training + comunicazione).
+  No model, times from distributions (training + communication).
 
 - `example2_no_model_ml.toml`  
-  Nessun modello, tempi di training dal modello ML, comunicazione da modello `"bandwidth"`.
+  No model, training times from ML model, communication from `"bandwidth"`.
 
 - `example3_dummy_dist.toml`  
-  Dummy model addestrato, tempi di training da distribuzioni, comunicazione `"bandwidth"`.
+  Dummy model trained, training times from distributions, communication `"bandwidth"`.
 
 - `example4_dummy_ml.toml`  
-  Dummy model addestrato, tempi di training dal modello ML, comunicazione `"bandwidth"`.
+  Dummy model trained, training times from ML model, communication `"bandwidth"`.
 
-Puoi usarli come base per comporre le tue configurazioni personalizzate.  
-Per lanciare una simulazione:
+You can use them as templates for your own configs.  
+To run a simulation:
 
 ```bash
 python -m fl_sim.cli --config configs/example4_dummy_ml.toml
 ```
-
