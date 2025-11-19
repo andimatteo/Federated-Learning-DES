@@ -8,4 +8,6 @@ venv/
 .idea/
 .vscode/
 output/
-
+output*/
+training*.csv
+data/
